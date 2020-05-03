@@ -35,7 +35,6 @@ function write {
 		fi
 		((w_loop_index++))
 	done
-	printf '\n' >> "$path" # \n is replaced or truncated and needs to be replaced
 }
 
 # param setup
@@ -123,4 +122,5 @@ done
 [ -n "$verbose" ] && printf "\n" && printf "${positions[*]}\n${replacements[*]}\n" | column -t
 write
 truncate -s "$index" "$path"
+printf '\n' >> "$path" # \n is replaced or truncated and needs to be replaced
 
