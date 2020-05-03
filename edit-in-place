@@ -60,7 +60,7 @@ fi
 
 # diff
 index=0
-size="$(( $(du --apparent-size -b $path | sed 's/\s\s*.*//') - 0 ))"
+size="$(du --apparent-size -b $path | sed 's/\s\s*.*//')"
 positions[0]="e"
 [ -n "$verbose" ] && printf "Input:\nFile:\nMatch:\r"
 while IFS= read -n1 input; do
