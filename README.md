@@ -4,4 +4,4 @@ Takes stdin and rewrites only what has to be rewritten of an existing file. I re
 ### This uses `dd`, `>>`, and `truncate` to rewrite only the bytes of a text file that need to be rewritten.
 Please don't use it anywhere important, but it seems to be working. I'm going to have my todo list program use it to see if I can't catch anything that breaks.
 
-<sup><sub>Next we make something to only overwrite the *bits* that need to be changed!<\sub><\sup>
+<sup><sub>Next we make something to only overwrite the *bits* that need to be changed!
