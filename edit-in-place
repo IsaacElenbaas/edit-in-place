@@ -1,0 +1,123 @@
+#!/bin/bash
+
+# Outline of how this works:
+# function to run
+#   printf "replacetext" | dd of=file seek=index bs=1 conv=notrunc
+# or (if index equal to file size)
+#   printf "replacetext" >> file
+# on every pair of position and replace
+# loop {
+#   if chars from input and file match put "e" in index array
+#   else {
+#     if not before end of file {
+#       set last position to last object in index array if currently "e"
+#       append input char to replacements array
+#     }
+#     else do same thing but make sure they're in a separate group (starting at length of file)
+#       so function can know they need to be appended
+#   }
+#   if loopIndex % something (keep memory usage down) run write function? (not in here, might add)
+# } # the "e" thing is so that adjacent bytes that need to be changed are grouped
+# that should leave a list of replacements, not touching anything already in the correct position
+# run dd function
+# truncate file to input length
+
+# replace/append
+function write {
+	w_loop_index=0
+	for i in "${positions[@]}"; do
+		if [ "$i" != "e" ]; then
+			if [ "$i" -lt "$size" ]; then
+				printf "${replacements[$w_loop_index]}" | dd of="$path" seek="$i" bs=1 conv=notrunc
+			else
+				printf "${replacements[$w_loop_index]}" >> "$path"
+			fi
+		fi
+		((w_loop_index++))
+	done
+	printf '\n' >> "$path" # \n is replaced or truncated and needs to be replaced
+}
+
+# param setup
+[ "$1" = "-v" ] && verbose=1
+if [ ! -p /dev/stdin ]; then
+	echo "No input!"
+	exit 1
+fi
+if [ -z "$verbose" ]; then
+	if [ -z "$1" ]; then
+		echo "No file!"
+		exit 1
+	fi
+	path=$1
+else
+	if [ -z "$2" ]; then
+		echo "No file!"
+		exit 1
+	fi
+	path=$2
+fi
+
+# diff
+index=0
+size="$(( $(du --apparent-size -b $path | sed 's/\s\s*.*//') - 0 ))"
+positions[0]="e"
+[ -n "$verbose" ] && printf "Input:\nFile:\nMatch:\r"
+while IFS= read -n1 input; do
+	if [ "$index" -lt "$size" ]; then
+		input2="$(printf '%b' "${input:-\n}" | od -N 1 -An)"
+		file="$(od -j $index -N 1 -An $path)"
+		# verbose
+		if [ -n "$verbose" ]; then
+			tput cuu 2
+			tput cuf $(( 6 + 7 * $index ))
+			printf "$input2\r"
+			tput cud1
+			tput cuf $(( 6 + 7 * $index ))
+			printf "$file\r"
+			tput cud1
+			tput cuf $(( 7 + 7 * $index ))
+			printf $([[ "$input2" = *"${file:-nl}"* ]] && echo "Y" || echo "N")"\r"
+		fi
+		# storing
+		a_index="$(( ${#positions[*]} - 1 ))"
+		if [[ "$input2" != *"${file:-nl}"* ]]; then
+			if [ "${positions[$a_index]}" = "e" ]; then
+				positions[$a_index]=$index
+				replacements[$a_index]=$input
+			else
+				replacements[$a_index]="${replacements[$a_index]}$input"
+			fi
+		elif [ "${positions[$a_index]}" != "e" ]; then
+			positions[${#positions[*]}]="e"
+		fi
+	else
+		input2="$(printf '%b' "${input:-\n}" | od -N 1 -An)"
+		# verbose
+		tput cuu 2
+		tput cuf $(( 6 + 7 * $index ))
+		printf "$input2\r"
+		tput cud 2
+		tput cuf $(( 7 + 7 * $index ))
+		printf "N\r"
+		# storing
+		a_index="$(( ${#positions[*]} - 1 ))"
+		if [ "$index" -eq "$size" ]; then
+			if [ "${positions[$a_index]}" = "e" ]; then
+				positions[$a_index]=$index
+				replacements[$a_index]=$input
+			else
+				a_index="${#positions[*]}"
+				positions[$a_index]=$index
+				replacements[$a_index]=$input
+			fi
+		else
+			replacements[$a_index]="${replacements[$a_index]}$input"
+		fi
+	fi
+	((index++))
+done
+[ -n "$verbose" ] && printf "\n" && printf "${positions[*]}\n${replacements[*]}\n" | column -t
+write
+truncate -s "$index" "$path"
+
