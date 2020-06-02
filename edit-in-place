@@ -38,6 +38,7 @@ function write {
 }
 
 # param setup
+[ "$1" = "-h" ] && printf "Simply call with a path and pipe the entire final content.\n-v will show the octal of the new and current content, whether the script thinks they match, and the write output.\n" && exit 1
 [ "$1" = "-v" ] && verbose=1
 if [ ! -p /dev/stdin ]; then
 	printf "No input!\n"
@@ -84,7 +85,7 @@ while IFS= read -n1 input; do
 		if [[ "$input2" != *"${file:-nl}"* ]]; then
 			if [ "${positions[$a_index]}" = "e" ]; then
 				positions[$a_index]=$index
-				replacements[$a_index]=$input
+				replacements[$a_index]=${input:-\\n}
 			else
 				replacements[$a_index]="${replacements[$a_index]}$input"
 			fi
