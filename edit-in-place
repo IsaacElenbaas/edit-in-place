@@ -124,4 +124,3 @@ done
 write
 truncate -s "$index" "$path"
 printf '\n' >> "$path" # \n is replaced or truncated and needs to be replaced
-
